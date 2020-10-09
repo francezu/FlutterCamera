@@ -13,7 +13,7 @@ part 'camera_image.dart';
 
 final MethodChannel _channel = const MethodChannel('plugins.flutter.io/camera');
 
-enum CameraLensDirection { front, back, external }
+enum CameraLensDirection { front, back, external, zoom, ultraWide }
 
 /// Affect the quality of video recording and image capture:
 ///
@@ -68,6 +68,10 @@ CameraLensDirection _parseCameraLensDirection(String string) {
       return CameraLensDirection.back;
     case 'external':
       return CameraLensDirection.external;
+    case 'zoom' :
+      return CameraLensDirection.zoom;
+    case 'ultraWide' :
+      return CameraLensDirection.ultraWide;
   }
   throw ArgumentError('Unknown CameraLensDirection value');
 }
@@ -84,6 +88,14 @@ Future<List<CameraDescription>> availableCameras() async {
         name: camera['name'],
         lensDirection: _parseCameraLensDirection(camera['lensFacing']),
         sensorOrientation: camera['sensorOrientation'],
+        sensorHmm: camera['SENSOR_INFO_PHYSICAL_SIZE_H'],
+        sensorWmm: camera['SENSOR_INFO_PHYSICAL_SIZE_W'],
+        sensorHpix: camera['SENSOR_INFO_ACTIVE_ARRAY_SIZE_H'],
+        sensorWpix: camera['SENSOR_INFO_ACTIVE_ARRAY_SIZE_W'],
+        sensorHpixActive: camera['SENSOR_INFO_PIXEL_ARRAY_SIZE_H'],
+        sensorWpixActive: camera['SENSOR_INFO_PIXEL_ARRAY_SIZE_W'],
+        focalLength: camera['LENS_INFO_AVAILABLE_FOCAL_LENGTHS'],
+
       );
     }).toList();
   } on PlatformException catch (e) {
@@ -92,10 +104,21 @@ Future<List<CameraDescription>> availableCameras() async {
 }
 
 class CameraDescription {
-  CameraDescription({this.name, this.lensDirection, this.sensorOrientation});
+  CameraDescription({this.name, this.lensDirection, this.sensorOrientation,
+    this.sensorHmm,this.sensorWmm,
+    this.sensorHpix,this.sensorWpix,
+    this.sensorHpixActive,this.sensorWpixActive,
+    this.focalLength});
 
   final String name;
   final CameraLensDirection lensDirection;
+  final double sensorHmm;
+  final double sensorWmm;
+  final int sensorHpix;
+  final int sensorWpix;
+  final int sensorHpixActive;
+  final int sensorWpixActive;
+  final double focalLength;
 
   /// Clockwise angle through which the output image needs to be rotated to be upright on the device screen in its native orientation.
   ///
@@ -163,12 +186,12 @@ class CameraValue {
 
   const CameraValue.uninitialized()
       : this(
-          isInitialized: false,
-          isRecordingVideo: false,
-          isTakingPicture: false,
-          isStreamingImages: false,
-          isRecordingPaused: false,
-        );
+    isInitialized: false,
+    isRecordingVideo: false,
+    isTakingPicture: false,
+    isStreamingImages: false,
+    isRecordingPaused: false,
+  );
 
   /// True after [CameraController.initialize] has completed successfully.
   final bool isInitialized;
@@ -242,10 +265,10 @@ class CameraValue {
 /// To show the camera preview on the screen use a [CameraPreview] widget.
 class CameraController extends ValueNotifier<CameraValue> {
   CameraController(
-    this.description,
-    this.resolutionPreset, {
-    this.enableAudio = true,
-  }) : super(const CameraValue.uninitialized());
+      this.description,
+      this.resolutionPreset, {
+        this.enableAudio = true,
+      }) : super(const CameraValue.uninitialized());
 
   final CameraDescription description;
   final ResolutionPreset resolutionPreset;
@@ -269,7 +292,7 @@ class CameraController extends ValueNotifier<CameraValue> {
     try {
       _creatingCompleter = Completer<void>();
       final Map<String, dynamic> reply =
-          await _channel.invokeMapMethod<String, dynamic>(
+      await _channel.invokeMapMethod<String, dynamic>(
         'initialize',
         <String, dynamic>{
           'cameraName': description.name,

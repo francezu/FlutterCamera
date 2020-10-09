@@ -3,6 +3,7 @@ package io.flutter.plugins.camera;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
@@ -10,6 +11,8 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.CamcorderProfile;
 import android.util.Size;
+import android.util.SizeF;
+
 import io.flutter.plugins.camera.Camera.ResolutionPreset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,12 +47,13 @@ public final class CameraUtils {
   public static List<Map<String, Object>> getAvailableCameras(Activity activity)
       throws CameraAccessException {
     CameraManager cameraManager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
-    String[] cameraNames = cameraManager.getCameraIdList();
+    String[] cameraNames ={"0","1","2","3"};// cameraManager.getCameraIdList();
     List<Map<String, Object>> cameras = new ArrayList<>();
     for (String cameraName : cameraNames) {
       HashMap<String, Object> details = new HashMap<>();
       CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraName);
       details.put("name", cameraName);
+
       int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
       details.put("sensorOrientation", sensorOrientation);
 
@@ -59,12 +63,43 @@ public final class CameraUtils {
           details.put("lensFacing", "front");
           break;
         case CameraMetadata.LENS_FACING_BACK:
-          details.put("lensFacing", "back");
+          if(cameraName.equals("0")){
+            details.put("lensFacing", "back");
+          }else if(cameraName.equals("2")) {
+            details.put("lensFacing","zoom");
+          }else if(cameraName.equals("3")){
+            details.put("lensFacing","ultraWide");
+          }
           break;
         case CameraMetadata.LENS_FACING_EXTERNAL:
           details.put("lensFacing", "external");
           break;
       }
+
+//      cameraManager.getCameraCharacteristics("0").getAvailablePhysicalCameraRequestKeys()
+//      cameraManager.getCameraCharacteristics("0").get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+      //distance between sensor and lens
+      float[] sensor =  characteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+      details.put("LENS_INFO_AVAILABLE_FOCAL_LENGTHS",sensor[0]);
+
+      //sensor physical size in mm
+      SizeF sensorF =  characteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+      details.put("SENSOR_INFO_PHYSICAL_SIZE_H",sensorF.getHeight());
+      details.put("SENSOR_INFO_PHYSICAL_SIZE_W",sensorF.getWidth());
+
+      //sensor physical size in pixel
+      Rect rect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+      details.put("SENSOR_INFO_ACTIVE_ARRAY_SIZE_H",rect.height());
+      details.put("SENSOR_INFO_ACTIVE_ARRAY_SIZE_W",rect.width());
+
+      //pixel used on sensor
+      Size pixelUsed = characteristics.get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE);
+      details.put("SENSOR_INFO_PIXEL_ARRAY_SIZE_H",pixelUsed.getHeight());
+      details.put("SENSOR_INFO_PIXEL_ARRAY_SIZE_W",pixelUsed.getWidth());
+
+
+      System.out.println("JAVA TATAR");
+
       cameras.add(details);
     }
     return cameras;
